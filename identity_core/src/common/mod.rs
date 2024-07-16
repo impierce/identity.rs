@@ -24,3 +24,5 @@ mod ordered_set;
 mod single_struct_error;
 mod timestamp;
 mod url;
+pub mod wasm;
+pub mod fake_wasm_mod;

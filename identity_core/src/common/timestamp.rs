@@ -19,6 +19,9 @@ use time::UtcOffset;
 use crate::error::Error;
 use crate::error::Result;
 
+#[cfg(target_arch = "wasm32-unknown-unknown")]
+use crate::common::wasm::wasm_time::now_utc;
+
 /// A parsed Timestamp.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 #[repr(transparent)]
@@ -57,6 +60,16 @@ impl Timestamp {
     let seconds: i64 = milliseconds_since_unix_epoch / 1000;
     // expect is okay, we assume the current time is between 0AD and 9999AD
     Self::from_unix(seconds).expect("Timestamp failed to convert system datetime")
+  }
+
+  /// Creates a new `Timestamp` with the current date and time, normalized to UTC+00:00 with
+  /// fractional seconds truncated.
+  ///
+  /// See the [`datetime` DID-core specification](https://www.w3.org/TR/did-core/#production).
+  #[cfg(target_arch = "wasm32-unknown-unknown")]
+  #[export_name = "now_utc"]
+  pub fn now_utc() -> Self {
+    Self(truncate_fractional_seconds(unsafe { now_utc() }))
   }
 
   /// Returns the `Timestamp` as an [RFC 3339](https://tools.ietf.org/html/rfc3339) `String`.
