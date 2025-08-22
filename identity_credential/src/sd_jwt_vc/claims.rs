@@ -32,7 +32,7 @@ pub struct SdJwtVcClaims {
   /// Verifiable credential type.
   /// See [SD-JWT VC specification](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-04.html#type-claim)
   /// for more information.
-  pub vct: StringOrUrl,
+  pub vct: Option<StringOrUrl>,
   /// Token's status.
   /// See [OAuth status list specification](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-02)
   /// for more information.
@@ -133,7 +133,8 @@ impl SdJwtVcClaims {
             expected: "String or URL",
             found: value,
           })
-      })?;
+      })
+      .ok();
     let status = {
       if let Some(value) = claims.remove("status") {
         serde_json::from_value::<Status>(value.clone())
@@ -207,7 +208,9 @@ impl From<SdJwtVcClaims> for SdJwtClaims {
     sd_jwt_claims.insert("iss".to_string(), Value::String(iss.into_string()));
     nbf.and_then(|t| sd_jwt_claims.insert("nbf".to_string(), Value::Number(t.to_unix().into())));
     exp.and_then(|t| sd_jwt_claims.insert("exp".to_string(), Value::Number(t.to_unix().into())));
-    sd_jwt_claims.insert("vct".to_string(), Value::String(vct.into()));
+    if let Some(vct) = vct {
+      sd_jwt_claims.insert("vct".to_string(), Value::String(vct.into()));
+    }
     status.and_then(|status| sd_jwt_claims.insert("status".to_string(), serde_json::to_value(status).unwrap()));
     iat.and_then(|t| sd_jwt_claims.insert("iat".to_string(), Value::Number(t.to_unix().into())));
     sub.and_then(|sub| sd_jwt_claims.insert("sub".to_string(), Value::String(sub.into())));
