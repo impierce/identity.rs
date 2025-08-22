@@ -45,7 +45,10 @@ roaring = { version = "0.10.2", default-features = false, features = [
 sd-jwt-payload = { version = "0.2.1", default-features = false, features = [
   "sha",
 ], optional = true }
-sd-jwt-payload-rework = { package = "sd-jwt-payload", version = "0.3", features = [
+# sd-jwt-payload-rework = { package = "sd-jwt-payload", version = "0.3", features = [
+#   "sha",
+# ], optional = true }
+sd-jwt-payload-rework = { git = "https://github.com/impierce/sd-jwt-payload", branch = "fix/hasher-send-sync", package = "sd-jwt-payload", features = [
   "sha",
 ], optional = true }
 serde.workspace = true
