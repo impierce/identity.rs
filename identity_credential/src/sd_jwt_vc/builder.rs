@@ -20,6 +20,7 @@ use serde_json::Value;
 
 use crate::credential::Credential;
 use crate::credential::CredentialJwtClaims;
+use crate::sd_jwt_vc::SD_JWT_DC_TYP;
 
 use super::Error;
 use super::Result;
@@ -248,7 +249,7 @@ impl<H: Hasher> SdJwtVcBuilder<H> {
       .entry("typ")
       .or_insert_with(|| SD_JWT_VC_TYP.to_owned().into())
       .as_str()
-      .filter(|typ| typ.contains(SD_JWT_VC_TYP))
+      .filter(|typ| typ.contains(SD_JWT_VC_TYP) || typ.contains(SD_JWT_DC_TYP))
       .ok_or_else(|| Error::InvalidJoseType(String::default()))?;
 
     let builder = inner_builder.header(header);

@@ -36,6 +36,7 @@ use serde_json::Value;
 
 /// SD-JWT VC's JOSE header `typ`'s value.
 pub const SD_JWT_VC_TYP: &str = "vc+sd-jwt";
+pub const SD_JWT_DC_TYP: &str = "dc+sd-jwt";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// An SD-JWT carrying a verifiable credential as described in
@@ -124,8 +125,9 @@ impl SdJwtVc {
     R: Resolver<StringOrUrl, Vec<u8>>,
   {
     let vct = match self.claims().vct.clone() {
-      StringOrUrl::Url(url) => StringOrUrl::Url(vct_to_url(&url).unwrap_or(url)),
-      s => s,
+      Some(StringOrUrl::Url(url)) => StringOrUrl::Url(vct_to_url(&url).unwrap_or(url)),
+      Some(s) => s,
+      _ => unimplemented!("missing `vct` claim"),
     };
     let raw = resolver.resolve(&vct).await.map_err(|e| Error::Resolution {
       input: vct.to_string(),
@@ -404,7 +406,7 @@ impl TryFrom<SdJwt> for SdJwtVc {
       .get("typ")
       .and_then(Value::as_str)
       .ok_or_else(|| Error::InvalidJoseType("null".to_string()))?;
-    if !typ.contains(SD_JWT_VC_TYP) {
+    if !typ.contains(SD_JWT_VC_TYP) && !typ.contains(SD_JWT_DC_TYP) {
       return Err(Error::InvalidJoseType(typ.to_string()));
     }
 
@@ -452,11 +454,13 @@ mod tests {
 
   const EXAMPLE_SD_JWT_VC: &str = "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogInZjK3NkLWp3dCJ9.eyJfc2QiOiBbIjBIWm1uU0lQejMzN2tTV2U3QzM0bC0tODhnekppLWVCSjJWel9ISndBVGciLCAiOVpicGxDN1RkRVc3cWFsNkJCWmxNdHFKZG1lRU9pWGV2ZEpsb1hWSmRSUSIsICJJMDBmY0ZVb0RYQ3VjcDV5eTJ1anFQc3NEVkdhV05pVWxpTnpfYXdEMGdjIiwgIklFQllTSkdOaFhJbHJRbzU4eWtYbTJaeDN5bGw5WmxUdFRvUG8xN1FRaVkiLCAiTGFpNklVNmQ3R1FhZ1hSN0F2R1RyblhnU2xkM3o4RUlnX2Z2M2ZPWjFXZyIsICJodkRYaHdtR2NKUXNCQ0EyT3RqdUxBY3dBTXBEc2FVMG5rb3ZjS09xV05FIiwgImlrdXVyOFE0azhxM1ZjeUE3ZEMtbU5qWkJrUmVEVFUtQ0c0bmlURTdPVFUiLCAicXZ6TkxqMnZoOW80U0VYT2ZNaVlEdXZUeWtkc1dDTmcwd1RkbHIwQUVJTSIsICJ3elcxNWJoQ2t2a3N4VnZ1SjhSRjN4aThpNjRsbjFqb183NkJDMm9hMXVnIiwgInpPZUJYaHh2SVM0WnptUWNMbHhLdUVBT0dHQnlqT3FhMXoySW9WeF9ZRFEiXSwgImlzcyI6ICJodHRwczovL2V4YW1wbGUuY29tL2lzc3VlciIsICJpYXQiOiAxNjgzMDAwMDAwLCAiZXhwIjogMTg4MzAwMDAwMCwgInZjdCI6ICJodHRwczovL2JtaS5idW5kLmV4YW1wbGUvY3JlZGVudGlhbC9waWQvMS4wIiwgImFnZV9lcXVhbF9vcl9vdmVyIjogeyJfc2QiOiBbIkZjOElfMDdMT2NnUHdyREpLUXlJR085N3dWc09wbE1Makh2UkM0UjQtV2ciLCAiWEx0TGphZFVXYzl6Tl85aE1KUm9xeTQ2VXNDS2IxSXNoWnV1cVVGS1NDQSIsICJhb0NDenNDN3A0cWhaSUFoX2lkUkNTQ2E2NDF1eWNuYzh6UGZOV3o4bngwIiwgImYxLVAwQTJkS1dhdnYxdUZuTVgyQTctRVh4dmhveHY1YUhodUVJTi1XNjQiLCAiazVoeTJyMDE4dnJzSmpvLVZqZDZnNnl0N0Fhb25Lb25uaXVKOXplbDNqbyIsICJxcDdaX0t5MVlpcDBzWWdETzN6VnVnMk1GdVBOakh4a3NCRG5KWjRhSS1jIl19LCAiX3NkX2FsZyI6ICJzaGEtMjU2IiwgImNuZiI6IHsiandrIjogeyJrdHkiOiAiRUMiLCAiY3J2IjogIlAtMjU2IiwgIngiOiAiVENBRVIxOVp2dTNPSEY0ajRXNHZmU1ZvSElQMUlMaWxEbHM3dkNlR2VtYyIsICJ5IjogIlp4amlXV2JaTVFHSFZXS1ZRNGhiU0lpcnNWZnVlY0NFNnQ0alQ5RjJIWlEifX19.CaXec2NNooWAy4eTxYbGWI--UeUL0jpC7Zb84PP_09Z655BYcXUTvfj6GPk4mrNqZUU5GT6QntYR8J9rvcBjvA~WyJuUHVvUW5rUkZxM0JJZUFtN0FuWEZBIiwgIm5hdGlvbmFsaXRpZXMiLCBbIkRFIl1d~WyJNMEpiNTd0NDF1YnJrU3V5ckRUM3hBIiwgIjE4IiwgdHJ1ZV0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgImlhdCI6IDE3MjA0NTQyOTUsICJzZF9oYXNoIjogIlZFejN0bEtqOVY0UzU3TTZoRWhvVjRIc19SdmpXZWgzVHN1OTFDbmxuZUkifQ.GqtiTKNe3O95GLpdxFK_2FZULFk6KUscFe7RPk8OeVLiJiHsGvtPyq89e_grBplvGmnDGHoy8JAt1wQqiwktSg";
   static EXAMPLE_ISSUER: LazyLock<Url> = LazyLock::new(|| "https://example.com/issuer".parse().unwrap());
-  static EXAMPLE_VCT: LazyLock<StringOrUrl> = LazyLock::new(|| {
-    "https://bmi.bund.example/credential/pid/1.0"
-      .parse::<Url>()
-      .unwrap()
-      .into()
+  static EXAMPLE_VCT: LazyLock<Option<StringOrUrl>> = LazyLock::new(|| {
+    Some(
+      "https://bmi.bund.example/credential/pid/1.0"
+        .parse::<Url>()
+        .unwrap()
+        .into(),
+    )
   });
 
   #[test]
