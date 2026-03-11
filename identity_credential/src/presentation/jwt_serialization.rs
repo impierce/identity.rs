@@ -9,6 +9,7 @@ use serde::Serialize;
 use identity_core::common::Context;
 use identity_core::common::Object;
 use identity_core::common::OneOrMany;
+use identity_core::common::StringOrUrl;
 use identity_core::common::Url;
 use serde::de::DeserializeOwned;
 
@@ -48,7 +49,7 @@ where
   jti: Option<Cow<'presentation, Url>>,
 
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub(crate) aud: Option<Url>,
+  pub(crate) aud: Option<StringOrUrl>,
 
   pub(crate) vp: InnerPresentation<'presentation, CRED, T>,
 
@@ -111,7 +112,7 @@ where
   context: Cow<'presentation, OneOrMany<Context>>,
   /// A unique `URI` that may be used to identify the `Presentation`.
   #[serde(skip_serializing_if = "Option::is_none")]
-  id: Option<Url>,
+  id: Option<StringOrUrl>,
   /// One or more URIs defining the type of the `Presentation`.
   #[serde(rename = "type")]
   types: Cow<'presentation, OneOrMany<String>>,
@@ -211,9 +212,11 @@ where
 pub(crate) struct JwtPresentationV2Claims<C, T> {
   pub(crate) iat: Option<i64>,
   pub(crate) exp: Option<i64>,
-  pub(crate) aud: Option<Url>,
+  pub(crate) aud: Option<StringOrUrl>,
   #[serde(flatten)]
   pub(crate) vp: Presentation<C, T>,
+  #[serde(flatten, skip_serializing_if = "Option::is_none")]
+  pub(crate) custom: Option<Object>,
 }
 
 impl<C, T> JwtPresentationV2Claims<C, T> {
@@ -223,6 +226,7 @@ impl<C, T> JwtPresentationV2Claims<C, T> {
       iat: options.issuance_date.map(|ts| ts.to_unix()),
       exp: options.expiration_date.map(|ts| ts.to_unix()),
       aud: options.audience.clone(),
+      custom: options.custom_claims.clone(),
     }
   }
 }

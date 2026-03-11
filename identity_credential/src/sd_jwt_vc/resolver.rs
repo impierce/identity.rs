@@ -23,7 +23,7 @@ pub enum Error {
 /// A type capable of asynchronously producing values of type `T` from inputs of type `I`.
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-pub trait Resolver<I: Sync, T> {
+pub trait Resolver<I: Send, T>: Sync {
   /// Fetch the resource of type [`Resolver::Target`] using `input`.
   async fn resolve(&self, input: &I) -> Result<T>;
 }

@@ -1,8 +1,8 @@
 // Copyright 2020-2024 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
+use futures::future::BoxFuture;
 use futures::future::FutureExt;
-use futures::future::LocalBoxFuture;
 use identity_core::common::Url;
 use itertools::Itertools as _;
 use serde::Deserialize;
@@ -102,7 +102,7 @@ fn validate_credential_impl<'c, 'r, R>(
   credential: &'c Value,
   resolver: &'r R,
   mut passed_types: Vec<TypeMetadata>,
-) -> LocalBoxFuture<'c, Result<()>>
+) -> BoxFuture<'c, Result<()>>
 where
   R: Resolver<Url, Value>,
   'r: 'c,
@@ -155,7 +155,7 @@ where
       Ok(())
     }
   }
-  .boxed_local()
+  .boxed()
 }
 
 fn validate_credential_with_schema(schema: &Value, credential: &Value) -> Result<()> {
